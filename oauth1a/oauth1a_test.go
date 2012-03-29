@@ -15,8 +15,8 @@
 package oauth1a
 
 import (
+	"net/http"
 	"testing"
-	"http"
 )
 
 var user = NewAuthorizedConfig("token", "secret")
@@ -50,12 +50,12 @@ func TestSignature(t *testing.T) {
 }
 
 var ESCAPE_TESTS = map[string]string{
-	"Ā" : "%C4%80",
-        "㤹" : "%E3%A4%B9",
+	"Ā": "%C4%80",
+	"㤹": "%E3%A4%B9",
 }
 
 func TestEscaping(t *testing.T) {
-	for str, expected := range(ESCAPE_TESTS) {
+	for str, expected := range ESCAPE_TESTS {
 		if Rfc3986Escape(str) != expected {
 			t.Errorf("Escaped %v was %v, expected %v", str, Rfc3986Escape(str), expected)
 		}

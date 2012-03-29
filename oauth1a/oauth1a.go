@@ -18,17 +18,16 @@
 package oauth1a
 
 import (
-	"http"
-	"strings"
-	"fmt"
-	"sort"
-	"time"
-	"crypto/sha1"
-	"crypto/hmac"
-	"os"
-	"encoding/base64"
 	"bytes"
-	"url"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/url"
+	"sort"
+	"strings"
+	"time"
 )
 
 // Container for client-specific configuration related to the OAuth process.
@@ -49,13 +48,13 @@ type Service struct {
 }
 
 // Signs an HTTP request with the needed OAuth parameters.
-func (s *Service) Sign(request *http.Request, userConfig *UserConfig) os.Error {
+func (s *Service) Sign(request *http.Request, userConfig *UserConfig) error {
 	return s.Signer.Sign(request, s.ClientConfig, userConfig)
 }
 
 // Interface for any OAuth signing implementations.
 type Signer interface {
-	Sign(request *http.Request, config *ClientConfig, user *UserConfig) os.Error
+	Sign(request *http.Request, config *ClientConfig, user *UserConfig) error
 }
 
 // A Signer which implements the HMAC-SHA1 signing algorithm.
@@ -84,11 +83,11 @@ func (HmacSha1Signer) encodeParameters(params map[string]string) string {
 // nanosecond
 // TODO: Come up with a better generation method.
 func (HmacSha1Signer) GenerateNonce() string {
-	ns := time.Nanoseconds()
+	ns := time.Now()
 	token := "OAuth Client Lib" + string(ns)
 	h := sha1.New()
 	h.Write([]byte(token))
-	return fmt.Sprintf("%x", h.Sum())
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // Returns a map of all of the oauth_* (including signature) parameters for the
@@ -132,17 +131,17 @@ func (s *HmacSha1Signer) GetOAuthParams(request *http.Request, clientConfig *Cli
 // token secret.
 func (s *HmacSha1Signer) GetSignature(consumerSecret string, tokenSecret string, signatureBase string) string {
 	signingKey := consumerSecret + "&" + tokenSecret
-	signer := hmac.NewSHA1([]byte(signingKey))
+	signer := hmac.New(sha1.New, []byte(signingKey))
 	signer.Write([]byte(signatureBase))
-	oauthSignature := base64.StdEncoding.EncodeToString(signer.Sum())
+	oauthSignature := base64.StdEncoding.EncodeToString(signer.Sum(nil))
 	return oauthSignature
 }
 
 // Given an unsigned request, add the appropriate OAuth Authorization header
 // using the HMAC-SHA1 algorithm.
-func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig) os.Error {
+func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig) error {
 	nonce := s.GenerateNonce()
-	timestamp := fmt.Sprintf("%v", time.Seconds())
+	timestamp := fmt.Sprintf("%v", time.Now())
 	oauthParams, _ := s.GetOAuthParams(request, clientConfig, userConfig, nonce, timestamp)
 	headerParts := make([]string, len(oauthParams))
 	var i = 0

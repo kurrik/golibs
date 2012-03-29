@@ -15,10 +15,10 @@
 package oauth1a
 
 import (
+	"errors"
 	"io/ioutil"
-	"http"
-	"os"
-	"url"
+	"net/http"
+	"net/url"
 )
 
 // Container for user-specific keys and secrets related to the OAuth process.
@@ -42,7 +42,7 @@ func NewAuthorizedConfig(token string, secret string) *UserConfig {
 }
 
 // Sign and send a Request using the current configuration.
-func (c *UserConfig) send(request *http.Request, service *Service, client *http.Client) (*http.Response, os.Error) {
+func (c *UserConfig) send(request *http.Request, service *Service, client *http.Client) (*http.Response, error) {
 	if err := service.Sign(request, c); err != nil {
 		return nil, err
 	}
@@ -51,13 +51,13 @@ func (c *UserConfig) send(request *http.Request, service *Service, client *http.
 		return nil, err
 	}
 	if response.StatusCode != 200 {
-		return nil, os.NewError("Endpoint response: " + response.Status)
+		return nil, errors.New("Endpoint response: " + response.Status)
 	}
 	return response, nil
 }
 
 // Issue a request to obtain a Request token.
-func (c *UserConfig) GetRequestToken(service *Service, client *http.Client) os.Error {
+func (c *UserConfig) GetRequestToken(service *Service, client *http.Client) error {
 	request, err := http.NewRequest("POST", service.RequestURL, nil)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func (c *UserConfig) GetRequestToken(service *Service, client *http.Client) os.E
 
 // Given the returned response from a Request token request, parse out the
 // appropriate request token and secret fields.
-func (c *UserConfig) parseRequestToken(response *http.Response) os.Error {
+func (c *UserConfig) parseRequestToken(response *http.Response) error {
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -83,28 +83,28 @@ func (c *UserConfig) parseRequestToken(response *http.Response) os.Error {
 	tokenKey := params.Get("oauth_token")
 	tokenSecret := params.Get("oauth_token_secret")
 	if tokenKey == "" || tokenSecret == "" {
-		return os.NewError("No token or secret found")
+		return errors.New("No token or secret found")
 	}
 	c.RequestTokenKey = tokenKey
 	c.RequestTokenSecret = tokenSecret
 	if params.Get("oauth_callback_confirmed") == "false" {
-		return os.NewError("OAuth callback not confirmed")
+		return errors.New("OAuth callback not confirmed")
 	}
 	return nil
 }
 
 // Obtain a URL which will allow the current user to authorize access to their
 // OAuth-protected data.
-func (c *UserConfig) GetAuthorizeURL(service *Service) (string, os.Error) {
+func (c *UserConfig) GetAuthorizeURL(service *Service) (string, error) {
 	if c.RequestTokenKey == "" || c.RequestTokenSecret == "" {
-		return "", os.NewError("No configured request token")
+		return "", errors.New("No configured request token")
 	}
 	token := url.QueryEscape(c.RequestTokenKey)
 	return service.AuthorizeURL + "?oauth_token=" + token, nil
 }
 
 // Parses an access token and verifier from a redirected authorize reqeust.
-func (c *UserConfig) ParseAuthorize(request *http.Request, service *Service) (string, string, os.Error) {
+func (c *UserConfig) ParseAuthorize(request *http.Request, service *Service) (string, string, error) {
 	request.ParseForm()
 	urlParts := request.URL.Query()
 	token := urlParts.Get("oauth_token")
@@ -116,18 +116,18 @@ func (c *UserConfig) ParseAuthorize(request *http.Request, service *Service) (st
 		verifier = request.Form.Get("oauth_verifier")
 	}
 	if token == "" || verifier == "" {
-		return "", "", os.NewError("Token or verifier were missing from response")
+		return "", "", errors.New("Token or verifier were missing from response")
 	}
 	return token, verifier, nil
 }
 
 // Issue a request to exchange the current request token for an access token.
-func (c *UserConfig) GetAccessToken(token string, verifier string, service *Service, client *http.Client) os.Error {
+func (c *UserConfig) GetAccessToken(token string, verifier string, service *Service, client *http.Client) error {
 	if c.RequestTokenKey == "" || c.RequestTokenSecret == "" {
-		return os.NewError("No configured request token")
+		return errors.New("No configured request token")
 	}
 	if c.RequestTokenKey != token {
-		return os.NewError("Returned token did not match request token")
+		return errors.New("Returned token did not match request token")
 	}
 	c.Verifier = verifier
 	request, err := http.NewRequest("POST", service.AccessURL, nil)
@@ -147,7 +147,7 @@ func (c *UserConfig) GetAccessToken(token string, verifier string, service *Serv
 // access token and token secret.  Store a copy of any other values returned,
 // too, since some services (like Twitter) return handy information such
 // as the username.
-func (c *UserConfig) parseAccessToken(response *http.Response) os.Error {
+func (c *UserConfig) parseAccessToken(response *http.Response) error {
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -157,7 +157,7 @@ func (c *UserConfig) parseAccessToken(response *http.Response) os.Error {
 	tokenKey := params.Get("oauth_token")
 	tokenSecret := params.Get("oauth_token_secret")
 	if tokenKey == "" || tokenSecret == "" {
-		return os.NewError("No token or secret found")
+		return errors.New("No token or secret found")
 	}
 	c.AccessTokenKey = tokenKey
 	c.AccessTokenSecret = tokenSecret
