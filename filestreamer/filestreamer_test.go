@@ -15,19 +15,20 @@
 package filestreamer
 
 import (
-	"testing"
-	"os"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
+	"testing"
 	"time"
 )
 
-func write(data string) (string, os.Error) {
+func write(data string) (string, error) {
 	var (
-		err os.Error
+		err  error
 		file *os.File
 	)
-	fileName := fmt.Sprintf("filestreamer-test-%v.txt", time.Nanoseconds())
+	fileName := fmt.Sprintf("filestreamer-test-%v.txt", time.Now())
 	tempPath := filepath.Join(os.TempDir(), fileName)
 	if file, err = os.Create(tempPath); err != nil {
 		return "", err
@@ -39,7 +40,7 @@ func write(data string) (string, os.Error) {
 	return tempPath, nil
 }
 
-func clean(path string) os.Error {
+func clean(path string) error {
 	return os.Remove(path)
 }
 
@@ -48,11 +49,12 @@ var TEST_DATA string = `1	2	3
 7	8	9
 10	11	12
 `
+
 func TestConsume(t *testing.T) {
 	var (
-		path string
-		err os.Error
-		exit bool
+		path  string
+		err   error
+		exit  bool
 		tally int
 	)
 	if path, err = write(TEST_DATA); err != nil {
@@ -63,12 +65,12 @@ func TestConsume(t *testing.T) {
 	lines, errors := streamer.Stream()
 	exit = false
 	tally = 0
-	for exit == false{
+	for exit == false {
 		select {
 		case <-lines:
 			tally += 1
 		case err = <-errors:
-			if err != os.EOF {
+			if err != io.EOF {
 				t.Fatal(err)
 			} else {
 				exit = true

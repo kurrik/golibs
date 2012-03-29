@@ -16,14 +16,14 @@
 package filestreamer
 
 import (
-	"os"
-	"bytes"
 	"bufio"
+	"bytes"
+	"os"
 )
 
 type Streamer struct {
 	path           string
-	error          chan os.Error
+	error          chan error
 	queue          chan string
 	linebuffersize int
 	charbuffersize int
@@ -37,8 +37,8 @@ func NewStreamer(path string) *Streamer {
 	}
 }
 
-func (r *Streamer) Stream() (chan string, chan os.Error) {
-	r.error = make(chan os.Error)
+func (r *Streamer) Stream() (chan string, chan error) {
+	r.error = make(chan error)
 	r.queue = make(chan string, r.linebuffersize)
 	go r.process()
 	return r.queue, r.error
@@ -47,10 +47,10 @@ func (r *Streamer) Stream() (chan string, chan os.Error) {
 func (r *Streamer) process() {
 	var (
 		file *os.File
-		err  os.Error
+		err  error
 	)
 	if file, err = os.Open(r.path); err != nil {
-		r.error <-err
+		r.error <- err
 		return
 	}
 	defer file.Close()
@@ -62,12 +62,12 @@ func (r *Streamer) process() {
 	)
 	for {
 		if part, prefix, err = reader.ReadLine(); err != nil {
-			r.error <-err
+			r.error <- err
 			break
 		}
 		buffer.Write(part)
 		if !prefix { // Complete line has been read
-			r.queue <-buffer.String()
+			r.queue <- buffer.String()
 		}
 		buffer.Reset()
 	}
