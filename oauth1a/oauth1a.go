@@ -84,7 +84,7 @@ func (HmacSha1Signer) encodeParameters(params map[string]string) string {
 // TODO: Come up with a better generation method.
 func (HmacSha1Signer) GenerateNonce() string {
 	ns := time.Now()
-	token := "OAuth Client Lib" + string(ns)
+	token := fmt.Sprintf("OAuth Client Lib %v", ns)
 	h := sha1.New()
 	h.Write([]byte(token))
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -117,7 +117,7 @@ func (s *HmacSha1Signer) GetOAuthParams(request *http.Request, clientConfig *Cli
 		//TODO: Support multiple parameters with the same name.
 		signingParams[key] = value[0]
 	}
-	signingUrl := fmt.Sprintf("%v://%v%v", request.URL.Scheme, request.URL.RawAuthority, request.URL.Path)
+	signingUrl := fmt.Sprintf("%v://%v%v", request.URL.Scheme, request.URL.Host, request.URL.Path)
 	signatureParts := []string{
 		request.Method,
 		url.QueryEscape(signingUrl),
