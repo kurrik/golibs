@@ -15,9 +15,9 @@
 package twurlrc
 
 import (
+	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
-	"io/ioutil"
 )
 
 // Represents OAuth credentials to make requests on behalf of a user.
@@ -35,7 +35,7 @@ type Twurlrc struct {
 }
 
 // Loads a Twurlrc object from the standard ~/.twurlrc location.
-func LoadTwurlrc() (*Twurlrc, os.Error) {
+func LoadTwurlrc() (*Twurlrc, error) {
 	t := new(Twurlrc)
 	t.data = make(map[string]interface{})
 	path := os.ShellExpand("$HOME/.twurlrc")
