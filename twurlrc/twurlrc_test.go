@@ -67,7 +67,7 @@ func Compare(a []string, b []string) bool {
 func TestParse(t *testing.T) {
 	twrc, err := Parse(SAMPLE)
 	if err != nil {
-		t.Error(err.String())
+		t.Error(err.Error())
 	}
 	profiles := twrc.GetProfiles()
 	if !Compare(profiles, []string{"userA", "userB"}) {
