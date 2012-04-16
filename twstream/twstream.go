@@ -43,6 +43,28 @@ type Configuration struct {
 	GZip           bool
 }
 
+type Dialer interface {
+	Dial(addr string) (io.ReadWriteCloser, error)
+}
+
+type NetDialer struct{
+	Proxy string
+}
+
+func (d *NetDialer) Dial(addr string) (io.ReadWriteCloser, error) {
+	var (
+		conn io.ReadWriteCloser
+		err error
+	)
+	if d.Proxy == "" {
+		conn, err = tls.Dial("tcp", addr, nil)
+	} else {
+		conn, err = net.Dial("tcp", d.Proxy)
+	}
+	return conn, err
+}
+
+
 // Returns an integer representation of a hex string encoded as a series of
 // ASCII bytes.
 func decodeHexString(data []byte) (uint64, error) {
@@ -79,14 +101,14 @@ func (r *listeningReader) Read(p []byte) (n int, err error) {
 
 // A wrapper around an io.Writer which will only write non-empty or non-\r\n
 // responses.
-type NonEmptyWriter struct {
+type nonEmptyWriter struct {
 	Writer io.Writer
 }
 
 // Write p into the configured writer if len(p) > 0 and p != "\r\n".
 // Returns len(p) if nothing is written, or the number of bytes actually written
 // and any errors which may have occurred.
-func (w *NonEmptyWriter) Write(p []byte) (n int, err error) {
+func (w *nonEmptyWriter) Write(p []byte) (n int, err error) {
 	size := len(p)
 	if size == 0 || size == 2 && string(p) == "\r\n" {
 		return size, nil
@@ -97,13 +119,16 @@ func (w *NonEmptyWriter) Write(p []byte) (n int, err error) {
 type Connection struct {
 	conf   *Configuration
 	cred   *twurlrc.Credentials
-	conn   net.Conn
+	conn   io.ReadWriteCloser
 	writer io.Writer
 	reader *bufio.Reader
+	Dialer Dialer
 }
 
 func NewConnection(conf *Configuration, cred *twurlrc.Credentials) *Connection {
-	return &Connection{conf: conf, cred: cred}
+	c := &Connection{conf: conf, cred: cred}
+	c.Dialer = &NetDialer{Proxy: conf.Proxy}
+	return c
 }
 
 func (c *Connection) Read() error {
@@ -204,7 +229,7 @@ func (c *Connection) readChunkedData() error {
 	var start time.Time
 
 	start = time.Now()
-	writer := &NonEmptyWriter{os.Stdout}
+	writer := &nonEmptyWriter{os.Stdout}
 
 	var buffer *bytes.Buffer
 	var decompressor *gzip.Reader
@@ -259,16 +284,11 @@ func (c *Connection) readChunkedData() error {
 
 // Initializes a TLS net.Conn object to the configured server.
 func (c *Connection) connect() error {
-	var addr string
-	var conn net.Conn
-	var err error
-	if c.conf.Proxy == "" {
-		addr = fmt.Sprintf("%v:443", c.conf.URL.Host)
-		conn, err = tls.Dial("tcp", addr, nil)
-	} else {
-		addr = c.conf.Proxy
-		conn, err = net.Dial("tcp", addr)
-	}
+	var (
+		conn io.ReadWriteCloser
+		err error
+	)
+	conn, err = c.Dialer.Dial(c.conf.URL.Host)
 	if err != nil {
 		return err
 	}
