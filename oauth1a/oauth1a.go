@@ -167,6 +167,7 @@ func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig,
 		headerParts[i] = Rfc3986Escape(key) + "=\"" + Rfc3986Escape(value) + "\""
 		i += 1
 	}
+	sort.Strings(headerParts)
 	oauthHeader := "OAuth " + strings.Join(headerParts, ", ")
 	request.Header["Authorization"] = []string{oauthHeader}
 	return nil
