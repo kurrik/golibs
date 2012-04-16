@@ -15,14 +15,13 @@
 package oauth1a
 
 import (
-	"testing"
-	"os"
-	"http"
 	"io/ioutil"
+	"net/http"
 	"strings"
+	"testing"
 )
 
-func LoadCredentials() (string, string, string, string, os.Error) {
+func LoadCredentials() (string, string, string, string, error) {
 	credentials, err := ioutil.ReadFile("CREDENTIALS")
 	if err != nil {
 		return "", "", "", "", err

@@ -15,9 +15,9 @@
 package twurlrc
 
 import (
+	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
-	"io/ioutil"
 )
 
 // Represents OAuth credentials to make requests on behalf of a user.
@@ -40,7 +40,7 @@ type Twurlrc struct {
 }
 
 // Given the contents of a .twurlrc file, return a parsed data structure.
-func Parse(text string) (*Twurlrc, os.Error) {
+func Parse(text string) (*Twurlrc, error) {
 	t := new(Twurlrc)
 	t.data = make(map[string]interface{})
 	err := goyaml.Unmarshal([]uint8(text), t.data)
@@ -51,7 +51,7 @@ func Parse(text string) (*Twurlrc, os.Error) {
 }
 
 // Given a path to a twurlrc file, return a parsed data structure.
-func Load(path string) (*Twurlrc, os.Error) {
+func Load(path string) (*Twurlrc, error) {
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
