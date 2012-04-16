@@ -1,4 +1,4 @@
-// Copyright 2011 Twitter, Inc.
+// Copyright 2012 Twitter, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,22 +29,34 @@ type Credentials struct {
 	Secret         string
 }
 
+// Returns a path to the default twurlrc location.
+func GetDefaultPath() string {
+	return os.ShellExpand("$HOME/.twurlrc")
+}
+
 // Represents a parsed ~/.twurlrc formatted file.
 type Twurlrc struct {
 	data map[string]interface{}
 }
 
-// Loads a Twurlrc object from the standard ~/.twurlrc location.
-func LoadTwurlrc() (*Twurlrc, os.Error) {
+// Given the contents of a .twurlrc file, return a parsed data structure.
+func Parse(text string) (*Twurlrc, os.Error) {
 	t := new(Twurlrc)
 	t.data = make(map[string]interface{})
-	path := os.ShellExpand("$HOME/.twurlrc")
-	data, err := ioutil.ReadFile(path)
+	err := goyaml.Unmarshal([]uint8(text), t.data)
 	if err != nil {
 		return nil, err
 	}
-	err = goyaml.Unmarshal(data, t.data)
 	return t, nil
+}
+
+// Given a path to a twurlrc file, return a parsed data structure.
+func Load(path string) (*Twurlrc, os.Error) {
+	text, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return Parse(string(text))
 }
 
 // Returns credentials for the given user profile and consumer key.
@@ -70,12 +82,12 @@ func (t *Twurlrc) GetDefaultCredentials() *Credentials {
 
 // Returns a list of consumer keys authorized with the given profile.
 func (t *Twurlrc) GetKeys(profile string) []string {
-	profileMap := t.data["profiles"].(map[string]interface{})
-	keyMap := profileMap[profile].(map[string]interface{})
+	profileMap := t.data["profiles"].(map[interface{}]interface{})
+	keyMap := profileMap[profile].(map[interface{}]interface{})
 	keys := make([]string, len(keyMap))
 	i := 0
 	for key, _ := range keyMap {
-		keys[i] = key
+		keys[i] = key.(string)
 		i++
 	}
 	return keys
@@ -83,11 +95,11 @@ func (t *Twurlrc) GetKeys(profile string) []string {
 
 // Returns a list of profiles listed in the ~/.twurlrc file.
 func (t *Twurlrc) GetProfiles() []string {
-	profileMap := t.data["profiles"].(map[string]interface{})
+	profileMap := t.data["profiles"].(map[interface{}]interface{})
 	profiles := make([]string, len(profileMap))
 	i := 0
 	for key, _ := range profileMap {
-		profiles[i] = key
+		profiles[i] = key.(string)
 		i++
 	}
 	return profiles
