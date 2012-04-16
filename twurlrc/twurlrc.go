@@ -31,7 +31,7 @@ type Credentials struct {
 
 // Returns a path to the default twurlrc location.
 func GetDefaultPath() string {
-	return os.ShellExpand("$HOME/.twurlrc")
+	return os.ExpandEnv("$HOME/.twurlrc")
 }
 
 // Represents a parsed ~/.twurlrc formatted file.
