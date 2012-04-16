@@ -17,6 +17,7 @@ package oauth1a
 import (
 	"net/http"
 	"testing"
+	"regexp"
 )
 
 var user = NewAuthorizedConfig("token", "secret")
@@ -46,6 +47,16 @@ func TestSignature(t *testing.T) {
 	expected := "8+ZC6DP8FU3z50qSWDeYCGix2x0="
 	if signature != expected {
 		t.Errorf("Signature %v did not match expected %v", signature, expected)
+	}
+}
+
+func TestTimestamp(t *testing.T) {
+	url := "https://example.com/endpoint"
+	request, _ := http.NewRequest("GET", url, nil)
+	service.Sign(request, user)
+	header := []byte(request.Header["Authorization"][0])
+	if matched, _ := regexp.Match("oauth_timestamp=\"[0-9]+\"", header); matched == false {
+		t.Errorf("Could not find valid timestamp in auth header: %v", string(header))
 	}
 }
 

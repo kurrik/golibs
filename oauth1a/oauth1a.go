@@ -141,7 +141,7 @@ func (s *HmacSha1Signer) GetSignature(consumerSecret string, tokenSecret string,
 // using the HMAC-SHA1 algorithm.
 func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig) error {
 	nonce := s.GenerateNonce()
-	timestamp := fmt.Sprintf("%v", time.Now())
+	timestamp := fmt.Sprintf("%v", time.Now().Unix())
 	oauthParams, _ := s.GetOAuthParams(request, clientConfig, userConfig, nonce, timestamp)
 	headerParts := make([]string, len(oauthParams))
 	var i = 0
