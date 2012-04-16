@@ -12,16 +12,12 @@ Run:
 
     go get -fix github.com/kurrik/twurlrc
 
-If you are on Lion and  have issues with Bazaar, e.g:
-
-    bzr: ERROR: Couldn't import bzrlib and dependencies.
-
-Then run:
-
-    sudo sed -i '' s,/usr/bin/python,/usr/bin/python2.6, /usr/local/bin/bzr
-
 Using
 -----
 Import `github.com/kurrik/twurlrc` in your code.
 
-See `twurlrc_test.go` for usage.
+See `twurlrc_test.go` for usage, but generally you should be able to do:
+
+    conf, err := twurlrc.Load(twurlrc.GetDefaultPath())
+    cred := conf.GetDefaultCredentials()
+
