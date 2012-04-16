@@ -52,6 +52,7 @@ func (s *Service) Sign(request *http.Request, userConfig *UserConfig) error {
 	return s.Signer.Sign(request, s.ClientConfig, userConfig)
 }
 
+
 // Interface for any OAuth signing implementations.
 type Signer interface {
 	Sign(request *http.Request, config *ClientConfig, user *UserConfig) error
@@ -145,8 +146,20 @@ func (s *HmacSha1Signer) GetSignature(consumerSecret string, tokenSecret string,
 // Given an unsigned request, add the appropriate OAuth Authorization header
 // using the HMAC-SHA1 algorithm.
 func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig) error {
-	nonce := s.GenerateNonce()
-	timestamp := fmt.Sprintf("%v", s.GenerateTimestamp())
+	var (
+		nonce string
+		timestamp string
+	)
+	if nonce = request.Header.Get("X-OAuth-Nonce"); nonce != "" {
+		request.Header.Del("X-OAuth-Nonce")
+	} else {
+		nonce = s.GenerateNonce()
+	}
+	if timestamp = request.Header.Get("X-OAuth-Timestamp"); nonce != "" {
+		request.Header.Del("X-OAuth-Timestamp")
+	} else {
+		timestamp = fmt.Sprintf("%v", s.GenerateTimestamp())
+	}
 	oauthParams, _ := s.GetOAuthParams(request, clientConfig, userConfig, nonce, timestamp)
 	headerParts := make([]string, len(oauthParams))
 	var i = 0

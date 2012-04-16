@@ -17,7 +17,7 @@ package oauth1a
 import (
 	"net/http"
 	"testing"
-	"regexp"
+	"strings"
 )
 
 var user = NewAuthorizedConfig("token", "secret")
@@ -50,13 +50,24 @@ func TestSignature(t *testing.T) {
 	}
 }
 
-func TestTimestamp(t *testing.T) {
+func TestOverrides(t *testing.T) {
 	url := "https://example.com/endpoint"
 	request, _ := http.NewRequest("GET", url, nil)
+	request.Header.Set("X-OAuth-Nonce", "12345")
+	request.Header.Set("X-OAuth-Timestamp", "54321")
 	service.Sign(request, user)
-	header := []byte(request.Header["Authorization"][0])
-	if matched, _ := regexp.Match("oauth_timestamp=\"[0-9]+\"", header); matched == false {
-		t.Errorf("Could not find valid timestamp in auth header: %v", string(header))
+	if request.Header.Get("X-OAuth-Nonce") != "" {
+		t.Errorf("Nonce override should be cleared after signing");
+	}
+	if request.Header.Get("X-OAuth-Timestamp") != "" {
+		t.Errorf("Timestamp override should be cleared after signing");
+	}
+	header := request.Header.Get("Authorization")
+	if !strings.Contains(header, "oauth_timestamp=\"54321\"") {
+		t.Errorf("Timestamp override was not used")
+	}
+	if !strings.Contains(header, "oauth_nonce=\"12345\"") {
+		t.Errorf("Nonce override was not used")
 	}
 }
 
