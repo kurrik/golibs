@@ -90,6 +90,11 @@ func (HmacSha1Signer) GenerateNonce() string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+// Generate a timestamp.
+func (HmacSha1Signer) GenerateTimestamp() int64 {
+	return time.Now().Unix()
+}
+
 // Returns a map of all of the oauth_* (including signature) parameters for the
 // given request, and the signature base string used to generate the signature.
 func (s *HmacSha1Signer) GetOAuthParams(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig, nonce string, timestamp string) (map[string]string, string) {
@@ -141,7 +146,7 @@ func (s *HmacSha1Signer) GetSignature(consumerSecret string, tokenSecret string,
 // using the HMAC-SHA1 algorithm.
 func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig, userConfig *UserConfig) error {
 	nonce := s.GenerateNonce()
-	timestamp := fmt.Sprintf("%v", time.Now().Unix())
+	timestamp := fmt.Sprintf("%v", s.GenerateTimestamp())
 	oauthParams, _ := s.GetOAuthParams(request, clientConfig, userConfig, nonce, timestamp)
 	headerParts := make([]string, len(oauthParams))
 	var i = 0
