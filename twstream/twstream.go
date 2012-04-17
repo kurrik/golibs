@@ -47,14 +47,14 @@ type Dialer interface {
 	Dial(addr string) (io.ReadWriteCloser, error)
 }
 
-type NetDialer struct{
+type NetDialer struct {
 	Proxy string
 }
 
 func (d *NetDialer) Dial(addr string) (io.ReadWriteCloser, error) {
 	var (
 		conn io.ReadWriteCloser
-		err error
+		err  error
 	)
 	if d.Proxy == "" {
 		conn, err = tls.Dial("tcp", addr, nil)
@@ -63,7 +63,6 @@ func (d *NetDialer) Dial(addr string) (io.ReadWriteCloser, error) {
 	}
 	return conn, err
 }
-
 
 // Returns an integer representation of a hex string encoded as a series of
 // ASCII bytes.
@@ -122,12 +121,14 @@ type Connection struct {
 	conn   io.ReadWriteCloser
 	writer io.Writer
 	reader *bufio.Reader
-	Dialer Dialer
+	dialer Dialer
+	fixedTime string
+	fixedNonce string
 }
 
 func NewConnection(conf *Configuration, cred *twurlrc.Credentials) *Connection {
 	c := &Connection{conf: conf, cred: cred}
-	c.Dialer = &NetDialer{Proxy: conf.Proxy}
+	c.dialer = &NetDialer{Proxy: conf.Proxy}
 	return c
 }
 
@@ -171,6 +172,9 @@ func (c *Connection) readHeaders() error {
 	var isGZip bool = false
 	for {
 		line, _, err = c.reader.ReadLine()
+		if err != nil {
+			return err
+		}
 		lowerLine := strings.ToLower(string(line))
 		if strings.HasPrefix(lowerLine, "content-encoding:") {
 			if strings.Index(lowerLine, "gzip") > -1 {
@@ -179,9 +183,6 @@ func (c *Connection) readHeaders() error {
 		}
 		if string(line) == "" {
 			break
-		}
-		if err != nil {
-			return err
 		}
 	}
 	if c.conf.GZip == true && isGZip == false {
@@ -286,9 +287,9 @@ func (c *Connection) readChunkedData() error {
 func (c *Connection) connect() error {
 	var (
 		conn io.ReadWriteCloser
-		err error
+		err  error
 	)
-	conn, err = c.Dialer.Dial(c.conf.URL.Host)
+	conn, err = c.dialer.Dial(c.conf.URL.Host)
 	if err != nil {
 		return err
 	}
@@ -305,6 +306,14 @@ func (c *Connection) request() error {
 	req, err := http.NewRequest(c.conf.Method, reqUrl, nil)
 	if err != nil {
 		return err
+	}
+	if c.fixedTime != "" {
+		// Override oauth timestamp for testing
+		req.Header.Set("X-OAuth-Timestamp", c.fixedTime)
+	}
+	if c.fixedNonce != "" {
+		// Override oauth nonce for testing
+		req.Header.Set("X-OAuth-Nonce", c.fixedNonce)
 	}
 	if !c.conf.Chunked {
 		// Send Connection: close, which mimics HTTP 1.0 behavior.

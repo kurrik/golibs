@@ -17,15 +17,22 @@ package twstream
 import (
 	"testing"
 	"io"
-	"fmt"
+	"github.com/kurrik/golibs/twurlrc"
+	"net/url"
+	"strings"
 )
 
 type MockDialer struct {
 	t *testing.T
+	Conn *MockConnection
+}
+
+func NewMockDialer(t *testing.T) *MockDialer {
+	return &MockDialer{Conn: &MockConnection{t: t}}
 }
 
 func (d *MockDialer) Dial(addr string) (io.ReadWriteCloser, error) {
-	return &MockConnection{t: d.t}, nil
+	return d.Conn, nil
 }
 
 const (
@@ -33,6 +40,7 @@ const (
 	WRITE
 	CLOSE
 	EMPTY
+	EOF
 )
 
 type MockConnection struct {
@@ -47,6 +55,7 @@ func (c *MockConnection) Expect(command int, message string) {
 }
 
 func (c *MockConnection) getExpected() (int, string) {
+	c.t.Log("getExpected")
 	if len(c.messages) == 0 {
 		return EMPTY, ""
 	}
@@ -58,29 +67,36 @@ func (c *MockConnection) getExpected() (int, string) {
 }
 
 func (c *MockConnection) Read(p []byte) (n int, err error) {
+	c.t.Log("read")
 	command, message := c.getExpected()
-	if command != READ {
-		c.t.Error("Expected READ")
+	if command == EOF {
+		c.t.Log("Sending EOF")
+		return 0, io.EOF
 	}
-	p = append(p, []byte(message)...)
+	if command != READ {
+		c.t.Fatal("Unexpected READ")
+	}
+	copy(p, []byte(message))
 	return len(message), nil
 }
 
 func (c *MockConnection) Write(p []byte) (n int, err error) {
+	c.t.Log("write")
 	command, message := c.getExpected()
 	if command != WRITE {
-		c.t.Error("Expected WRITE")
+		c.t.Fatal("Unexpected WRITE")
 	}
 	if message != string(p) {
-		c.t.Error(fmt.Sprintf("Expected '%v', got '%v'", message, p))
+		c.t.Errorf("Expected '%v', got '%v'", []byte(message), p)
 	}
 	return len(p), nil
 }
 
 func (c *MockConnection) Close() error {
+	c.t.Log("close")
 	command, _ := c.getExpected()
 	if command != CLOSE {
-		c.t.Error("Expected CLOSE")
+		c.t.Fatal("Unexpected CLOSE")
 	}
 	return nil
 }
@@ -91,6 +107,51 @@ func (c *MockConnection) EndTest() {
 	}
 }
 
+var (
+	CRLF = string([]byte{13, 10})
+	CONNECT_STRING = strings.Join([]string{
+		"GET /1/statuses/filter.json HTTP/1.1",
+		"Host: stream.twitter.com",
+		"User-Agent: Go http package",
+		"Authorization: OAuth " +
+			"oauth_consumer_key=\"consumerkey\", " +
+			"oauth_nonce=\"54321\", " +
+			"oauth_signature=\"dG59sMu9QpDU4oJMGCjKEKGlVYU%3D\", " +
+			"oauth_signature_method=\"HMAC-SHA1\", " +
+			"oauth_timestamp=\"12345\", " +
+			"oauth_token=\"token\", " +
+			"oauth_version=\"1.0\"",
+		"Connection: close",
+		CRLF,
+	}, CRLF)
+	PAYLOAD_STRING_1 = "{\"foo\": \"bar\"}" + CRLF
+)
+
 func TestParse(t *testing.T) {
-	t.Error("Fail")
+	dialer := NewMockDialer(t)
+	dialer.Conn.Expect(WRITE, CONNECT_STRING)
+	dialer.Conn.Expect(READ, PAYLOAD_STRING_1)
+	dialer.Conn.Expect(EOF, "")
+	dialer.Conn.Expect(CLOSE, "")
+	defer dialer.Conn.EndTest()
+
+	requestUrl, _ := url.Parse("https://stream.twitter.com/1/statuses/filter.json")
+	conf := &Configuration{
+		Method: "GET",
+		URL: requestUrl,
+		Chunked: false,
+		GZip: false,
+	}
+	cred := &twurlrc.Credentials{
+		Token: "token",
+		Username: "username",
+		ConsumerKey: "consumerkey",
+		ConsumerSecret: "consumersecret",
+		Secret: "secret",
+	}
+	conn := NewConnection(conf, cred)
+	conn.fixedTime = "12345"
+	conn.fixedNonce = "54321"
+	conn.dialer = dialer
+	conn.Read()
 }
