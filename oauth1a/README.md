@@ -71,7 +71,7 @@ To send an authenticated request:
     httpRequest, _ := http.NewRequest("GET", "https://api.twitter.com/1/account/verify_credentials.json", nil)
     service.Sign(httpRequest, userConfig)
     var httpResponse *http.Response
-    var err os.Error
+    var err error
     httpResponse, err = httpClient.Do(httpRequest)
 
 
