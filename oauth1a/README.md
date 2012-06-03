@@ -14,7 +14,7 @@ Include in your source:
 ## Testing
 Clone this repository, then run:
 
-    go test
+    go test -short
 
 in the `oauth1a` directory.  To run an integration test, create a file named
 CREDENTIALS in the library directory.  There should be four lines in this file,
@@ -27,7 +27,7 @@ in the following format:
 
 Then run:
 
-    gotest -file oauth1a_test_integration.go
+    go test
 
 This will run an integration test against the Twitter
 `/account/verify_credentials.json` endpoint.

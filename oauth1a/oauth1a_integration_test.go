@@ -51,6 +51,10 @@ func GetTwitterConfig(t *testing.T) (*Service, *UserConfig) {
 }
 
 func TestIntegration(t *testing.T) {
+	if testing.Short() == true {
+		t.Log("Not running integration test because short was specified.")
+		return
+	}
 	service, userConfig := GetTwitterConfig(t)
 	httpClient := new(http.Client)
 	url := "https://api.twitter.com/1/account/verify_credentials.json"
