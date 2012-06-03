@@ -93,7 +93,7 @@ func (HmacSha1Signer) GenerateNonce() string {
 
 // Generate a timestamp.
 func (HmacSha1Signer) GenerateTimestamp() int64 {
-	return time.Now().Unix()
+	return time.Now().UTC().Unix()
 }
 
 // Returns a map of all of the oauth_* (including signature) parameters for the
