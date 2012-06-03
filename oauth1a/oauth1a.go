@@ -155,7 +155,7 @@ func (s *HmacSha1Signer) Sign(request *http.Request, clientConfig *ClientConfig,
 	} else {
 		nonce = s.GenerateNonce()
 	}
-	if timestamp = request.Header.Get("X-OAuth-Timestamp"); nonce != "" {
+	if timestamp = request.Header.Get("X-OAuth-Timestamp"); timestamp != "" {
 		request.Header.Del("X-OAuth-Timestamp")
 	} else {
 		timestamp = fmt.Sprintf("%v", s.GenerateTimestamp())
