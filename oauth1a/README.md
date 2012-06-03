@@ -1,11 +1,11 @@
 # Package oauth1a
 ## Summary
-An implementation of OAuth 1.0a in Go.
+An implementation of OAuth 1.0a in Go1.
 
 ## Installing
 Run:
 
-    goinstall github.com/kurrik/golibs/oauth1a
+    go get github.com/kurrik/golibs/oauth1a
 
 Include in your source:
 
@@ -14,7 +14,7 @@ Include in your source:
 ## Testing
 Clone this repository, then run:
 
-    gotest
+    go test
 
 in the `oauth1a` directory.  To run an integration test, create a file named
 CREDENTIALS in the library directory.  There should be four lines in this file,

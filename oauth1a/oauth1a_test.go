@@ -50,15 +50,28 @@ func TestSignature(t *testing.T) {
 	}
 }
 
-func TestOverrides(t *testing.T) {
+func TestNonceOverride(t *testing.T) {
 	url := "https://example.com/endpoint"
 	request, _ := http.NewRequest("GET", url, nil)
 	request.Header.Set("X-OAuth-Nonce", "12345")
-	request.Header.Set("X-OAuth-Timestamp", "54321")
 	service.Sign(request, user)
 	if request.Header.Get("X-OAuth-Nonce") != "" {
 		t.Errorf("Nonce override should be cleared after signing");
 	}
+	header := request.Header.Get("Authorization")
+	if !strings.Contains(header, "oauth_nonce=\"12345\"") {
+		t.Errorf("Nonce override was not used")
+	}
+	if strings.Contains(header, "oauth_timestamp=\"\"") {
+		t.Errorf("Timestamp not sent when nonce override used")
+	}
+}
+
+func TestTimestampOverride(t *testing.T) {
+	url := "https://example.com/endpoint"
+	request, _ := http.NewRequest("GET", url, nil)
+	request.Header.Set("X-OAuth-Timestamp", "54321")
+	service.Sign(request, user)
 	if request.Header.Get("X-OAuth-Timestamp") != "" {
 		t.Errorf("Timestamp override should be cleared after signing");
 	}
@@ -66,8 +79,8 @@ func TestOverrides(t *testing.T) {
 	if !strings.Contains(header, "oauth_timestamp=\"54321\"") {
 		t.Errorf("Timestamp override was not used")
 	}
-	if !strings.Contains(header, "oauth_nonce=\"12345\"") {
-		t.Errorf("Nonce override was not used")
+	if strings.Contains(header, "oauth_nonce=\"\"") {
+		t.Errorf("Nonce not sent when timestamp override used")
 	}
 }
 
